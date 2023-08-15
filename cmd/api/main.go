@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -20,7 +21,9 @@ type config struct {
 	port string
 	env  string
 	db   struct {
-		dsn string
+		dsn          string
+		maxOpenConns string
+		maxIdleTime  string
 	}
 }
 
@@ -48,6 +51,18 @@ func openDB(cfg config) (*postgres, error) {
 			return
 		}
 
+		i, err := strconv.Atoi(cfg.db.maxOpenConns)
+		if err != nil {
+			return
+		}
+		db.Config().MaxConns = int32(i)
+
+		duration, err := time.ParseDuration(cfg.db.maxIdleTime)
+		if err != nil {
+			return
+		}
+		db.Config().MaxConnIdleTime = duration
+
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
@@ -72,6 +87,8 @@ func main() {
 	flag.StringVar(&cfg.port, "port", os.Getenv("PORT"), "API server port")
 	flag.StringVar(&cfg.env, "env", os.Getenv("ENVIRONMENT"), "Environment (development|staging|production)")
 	flag.StringVar(&cfg.db.dsn, "db-dsn", os.Getenv("DB_URL"), "PostgreSQL DSN")
+	flag.StringVar(&cfg.db.maxOpenConns, "db-max-open-conns", os.Getenv("DB_MAX_OPEN_CONNS"), "PostgreSQL max open connections")
+	flag.StringVar(&cfg.db.maxIdleTime, "db-max-idle-time", os.Getenv("DB_MAX_IDLE_TIME"), "PostgreSQL max connection idle time")
 	flag.Parse()
 
 	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime)
