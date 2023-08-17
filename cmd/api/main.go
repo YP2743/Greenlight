@@ -13,6 +13,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
+	"greenlight.yp2743.me/internal/data"
 )
 
 const version = "1.0.0"
@@ -30,6 +31,7 @@ type config struct {
 type application struct {
 	config config
 	logger *log.Logger
+	models data.Models
 }
 
 // Singleton pattern to make sure that only one connection pool exists.
@@ -103,6 +105,7 @@ func main() {
 	app := &application{
 		config: cfg,
 		logger: logger,
+		models: data.NewModels(db.pool),
 	}
 
 	srv := &http.Server{
