@@ -12,7 +12,8 @@ import (
 )
 
 var (
-	ErrDuplicateEmail = errors.New("duplicate email")
+	ErrDuplicateEmail        = errors.New("duplicate email")
+	ErrDuplicateEmailMessage = `ERROR: duplicate key value violates unique constraint "users_email_key" (SQLSTATE 23505)`
 )
 
 type User struct {
@@ -67,7 +68,7 @@ func (m UserModel) Insert(user *User) error {
 	err = m.DB.QueryRow(ctx, query, args...).Scan(&user.ID, &user.CreatedAt, &user.Version)
 	if err != nil {
 		switch {
-		case err.Error() == `ERROR: duplicate key value violates unique constraint "users_email_key" (SQLSTATE 23505)`:
+		case err.Error() == ErrDuplicateEmailMessage:
 			return ErrDuplicateEmail
 		default:
 			return err
@@ -134,7 +135,7 @@ func (m UserModel) Update(user *User) error {
 	err = m.DB.QueryRow(ctx, query, args...).Scan(&user.Version)
 	if err != nil {
 		switch {
-		case err.Error() == `ERROR: duplicate key value violates unique constraint "users_email_key" (SQLSTATE 23505)`:
+		case err.Error() == ErrDuplicateEmailMessage:
 			return ErrDuplicateEmail
 		case errors.Is(err, pgx.ErrNoRows):
 			return ErrEditConflict
