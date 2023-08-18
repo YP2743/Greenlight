@@ -5,6 +5,7 @@ go 1.21.0
 require github.com/joho/godotenv v1.5.1
 
 require (
+	github.com/alexedwards/argon2id v0.0.0-20230305115115-4b3c3280a736
 	github.com/jackc/pgx/v5 v5.4.3
 	github.com/julienschmidt/httprouter v1.3.0
 	golang.org/x/time v0.3.0
@@ -16,5 +17,6 @@ require (
 	github.com/jackc/puddle/v2 v2.2.1 // indirect
 	golang.org/x/crypto v0.9.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
+	golang.org/x/sys v0.8.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
 )
