@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -26,6 +25,11 @@ type config struct {
 		dsn          string
 		maxOpenConns string
 		maxIdleTime  string
+	}
+	limiter struct {
+		rps     string
+		burst   string
+		enabled bool
 	}
 }
 
@@ -80,21 +84,27 @@ func openDB(cfg config) (*postgres, error) {
 
 func main() {
 
+	logger := jsonlog.New(os.Stdout, jsonlog.LevelInfo)
+
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		logger.PrintFatal(err, nil)
 	}
 
 	var cfg config
 
 	flag.StringVar(&cfg.port, "port", os.Getenv("PORT"), "API server port")
 	flag.StringVar(&cfg.env, "env", os.Getenv("ENVIRONMENT"), "Environment (development|staging|production)")
+
 	flag.StringVar(&cfg.db.dsn, "db-dsn", os.Getenv("DB_URL"), "PostgreSQL DSN")
 	flag.StringVar(&cfg.db.maxOpenConns, "db-max-open-conns", os.Getenv("DB_MAX_OPEN_CONNS"), "PostgreSQL max open connections")
 	flag.StringVar(&cfg.db.maxIdleTime, "db-max-idle-time", os.Getenv("DB_MAX_IDLE_TIME"), "PostgreSQL max connection idle time")
-	flag.Parse()
 
-	logger := jsonlog.New(os.Stdout, jsonlog.LevelInfo)
+	flag.StringVar(&cfg.limiter.rps, "limiter-rps", os.Getenv("RPS_LIMIT"), "Rate limiter maximum requests per second")
+	flag.StringVar(&cfg.limiter.burst, "limiter-burst", os.Getenv("BURST_LIMIT"), "Rate limiter maximum burst")
+	flag.BoolVar(&cfg.limiter.enabled, "limiter-enabled", true, "Enable rate limiter")
+
+	flag.Parse()
 
 	db, err := openDB(cfg)
 	if err != nil {
