@@ -12,6 +12,7 @@ import (
 	"github.com/joho/godotenv"
 	"greenlight.yp2743.me/internal/data"
 	"greenlight.yp2743.me/internal/jsonlog"
+	"greenlight.yp2743.me/internal/mailer"
 )
 
 const version = "1.0.0"
@@ -29,12 +30,20 @@ type config struct {
 		burst   string
 		enabled bool
 	}
+	smtp struct {
+		host     string
+		port     string
+		username string
+		password string
+		sender   string
+	}
 }
 
 type application struct {
 	config config
 	logger *jsonlog.Logger
 	models data.Models
+	mailer mailer.Mailer
 }
 
 // Singleton pattern to make sure that only one connection pool exists.
@@ -102,6 +111,12 @@ func main() {
 	flag.StringVar(&cfg.limiter.burst, "limiter-burst", os.Getenv("BURST_LIMIT"), "Rate limiter maximum burst")
 	flag.BoolVar(&cfg.limiter.enabled, "limiter-enabled", true, "Enable rate limiter")
 
+	flag.StringVar(&cfg.smtp.host, "smtp-host", os.Getenv("SMTP_HOST"), "SMTP host")
+	flag.StringVar(&cfg.smtp.port, "smtp-port", os.Getenv("SMTP_PORT"), "SMTP port")
+	flag.StringVar(&cfg.smtp.username, "smtp-username", os.Getenv("SMTP_USERNAME"), "SMTP username")
+	flag.StringVar(&cfg.smtp.password, "smtp-password", os.Getenv("SMTP_PASSWORD"), "SMTP password")
+	flag.StringVar(&cfg.smtp.sender, "smtp-sender", os.Getenv("SMTP_SENDER"), "SMTP sender")
+
 	flag.Parse()
 
 	db, err := openDB(cfg)
@@ -111,10 +126,15 @@ func main() {
 	defer db.pool.Close()
 	logger.PrintInfo("database connection pool established", nil)
 
+	smtp_port, err := strconv.Atoi(cfg.smtp.port)
+	if err != nil {
+		return
+	}
 	app := &application{
 		config: cfg,
 		logger: logger,
 		models: data.NewModels(db.pool),
+		mailer: mailer.New(cfg.smtp.host, smtp_port, cfg.smtp.username, cfg.smtp.password, cfg.smtp.sender),
 	}
 
 	err = app.serve()
