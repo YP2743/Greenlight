@@ -13,6 +13,8 @@ import (
 )
 
 var (
+	AnonymousUser = &User{}
+
 	ErrDuplicateEmail        = errors.New("duplicate email")
 	ErrDuplicateEmailMessage = `ERROR: duplicate key value violates unique constraint "users_email_key" (SQLSTATE 23505)`
 )
@@ -25,6 +27,10 @@ type User struct {
 	Password  string    `json:"-"`
 	Activated bool      `json:"activated"`
 	Version   int       `json:"-"`
+}
+
+func (u *User) IsAnonymous() bool {
+	return u == AnonymousUser
 }
 
 func ValidateEmail(v *validator.Validator, email string) {
