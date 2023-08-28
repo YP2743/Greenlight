@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"expvar"
 	"flag"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -94,6 +96,21 @@ func openDB(cfg config) (*postgres, error) {
 	return pgInstance, nil
 }
 
+type PoolStats struct {
+	AcquireCount            int64
+	AcquireDuration         time.Duration
+	AcquiredConns           int32
+	CanceledAcquireCount    int64
+	ConstructingConns       int32
+	EmptyAcquireCount       int64
+	IdleConns               int32
+	MaxConns                int32
+	TotalConns              int32
+	NewConnsCount           int64
+	MaxLifetimeDestroyCount int64
+	MaxIdleDestroyCount     int64
+}
+
 func main() {
 
 	logger := jsonlog.New(os.Stdout, jsonlog.LevelInfo)
@@ -136,9 +153,35 @@ func main() {
 	defer db.pool.Close()
 	logger.PrintInfo("database connection pool established", nil)
 
+	expvar.NewString("version").Set(version)
+	expvar.Publish("goroutines", expvar.Func(func() interface{} {
+		return runtime.NumGoroutine()
+	}))
+	expvar.Publish("database", expvar.Func(func() interface{} {
+		stats := db.pool.Stat()
+		poolStats := PoolStats{
+			AcquireCount:            stats.AcquireCount(),
+			AcquireDuration:         stats.AcquireDuration(),
+			AcquiredConns:           stats.AcquiredConns(),
+			CanceledAcquireCount:    stats.CanceledAcquireCount(),
+			ConstructingConns:       stats.ConstructingConns(),
+			EmptyAcquireCount:       stats.EmptyAcquireCount(),
+			IdleConns:               stats.IdleConns(),
+			MaxConns:                stats.MaxConns(),
+			TotalConns:              stats.TotalConns(),
+			NewConnsCount:           stats.NewConnsCount(),
+			MaxLifetimeDestroyCount: stats.MaxLifetimeDestroyCount(),
+			MaxIdleDestroyCount:     stats.MaxIdleDestroyCount(),
+		}
+		return poolStats
+	}))
+	expvar.Publish("timestamp", expvar.Func(func() interface{} {
+		return time.Now().Unix()
+	}))
+
 	smtp_port, err := strconv.Atoi(cfg.smtp.port)
 	if err != nil {
-		return
+		logger.PrintFatal(err, nil)
 	}
 	app := &application{
 		config: cfg,
